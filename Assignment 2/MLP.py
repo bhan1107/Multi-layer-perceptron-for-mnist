@@ -7,7 +7,7 @@ from numpy.core.fromnumeric import size
 class MLP(object):
 
     INPUTNODE_NUM = 784
-    HIDDENODE_NUM = 397
+    HIDDENODE_NUM = 40
     OUTPUTNODE_NUM = 10
 
     def __init__(self, nRate, bRate, iter):
@@ -27,52 +27,85 @@ class MLP(object):
     
     def createWeights(self):
         rgen = np.random.RandomState(1)
-        self.layerOneWeights = rgen.normal(loc=0.0, scale=0.01, size=0 + self.INPUTNODE_NUM * self.HIDDENODE_NUM) # Initializing all weights from input layer to hidden layer
+        self.layerOneWeights = np.round(rgen.normal(loc=0.0, scale=0.01, size=0 + self.INPUTNODE_NUM * self.HIDDENODE_NUM),5) # Initializing all weights from input layer to hidden layer
         self.layerOneWeights = np.reshape(self.layerOneWeights, (-1, self.HIDDENODE_NUM))
-        self.layerTwoWeights = rgen.normal(loc=0.0, scale=0.01, size=0 + self.HIDDENODE_NUM * self.OUTPUTNODE_NUM) # Initializing all weights from hidden layer to output layer
+        self.layerTwoWeights = np.round(rgen.normal(loc=0.0, scale=0.01, size=0 + self.HIDDENODE_NUM * self.OUTPUTNODE_NUM),5) # Initializing all weights from hidden layer to output layer
         self.layerTwoWeights = np.reshape(self.layerTwoWeights, (-1, self.OUTPUTNODE_NUM))
         self.biasWeights = rgen.normal(loc=0.0, scale=0.01, size=2)
+        print(self.layerOneWeights[0][0])
 
     def sigmoidFunction(self, value):
         return 1/(1 + np.exp(-value))
     
     
     def trainNN(self):
-        error = []
-        output = []
-        hiddenNodes = []
-        activationFunction = 0
 
-        #for x in range(np.size(self.trainInput)):
-
-        for counter in range(self.HIDDENODE_NUM):
-            for i in range(np.size(self.trainInput[0])):
-                activationFunction += self.trainInput[0][i] * self.layerOneWeights[i][counter]
-            hiddenNodes.append(self.sigmoidFunction(activationFunction) + self.biasWeights[0]*1)
+        for x in range(59999):
+            error = []
+            output = []
+            hiddenNodes = []
             activationFunction = 0
-    
-        for counter in range(self.OUTPUTNODE_NUM):
-            for i in range(np.size(hiddenNodes)):
-                activationFunction += hiddenNodes[i] * self.layerTwoWeights[i][counter]
-            output.append(self.sigmoidFunction(activationFunction) + self.biasWeights[1]*1)
-            activationFunction = 0
+            self.correct = 0
+            self.incorrect = 0
 
-        print(output.index(max(output)))
-        print(self.trainOutput[0])
-        for i in range(self.OUTPUTNODE_NUM):
-            if(i != self.trainOutput[0]):
-                error.append( (0 - output[i]) )
-            else:
-                error.append( (1 - output[i]) )
-        print(output)
-        print(error)
-        
-        self.adjustWeight(output,error,hiddenNodes)
+            for counter in range(self.HIDDENODE_NUM):
+                for i in range(np.size(self.trainInput[x])):
+                    activationFunction += self.trainInput[x][i] * self.layerOneWeights[i][counter]
+                hiddenNodes.append(self.sigmoidFunction(activationFunction) + self.biasWeights[0]*1)
+                activationFunction = 0
+            
+            for counter in range(self.OUTPUTNODE_NUM):
+                for i in range(np.size(hiddenNodes)):
+                    activationFunction += hiddenNodes[i] * self.layerTwoWeights[i][counter]
+                output.append(self.sigmoidFunction(activationFunction) + self.biasWeights[1]*1)
+                activationFunction = 0
+            
+            if(output.index(max(output)) != self.trainOutput[x]):
+                self.incorrect += 1
+                for i in range(self.OUTPUTNODE_NUM):
+                    if(i != self.trainOutput[x]):
+                        error.append( (0 - output[i]) )
+                    else:
+                        error.append( (1 - output[i]) )
+                self.adjustWeight(output,error,hiddenNodes)
+            print(x)
 
     def adjustWeight(self, output, error, hiddenNodes):
-        counter = 0
         for i in range(np.size(hiddenNodes)):
+            propogation = 0
             for j in range(np.size(output)):
-                self.layerTwoWeights[i][j] += self.learningRate * error[j] * output[j] * ( 1 - output[j] ) * hiddenNodes[i]
-                counter+=1
-        print(counter)
+                change = self.learningRate * error[j] * output[j] * ( 1 - output[j] ) * hiddenNodes[i]
+                self.layerTwoWeights[i][j] += change
+                propogation += change
+            for h in range(np.size(self.trainInput[i])):
+                self.layerOneWeights[h][i] += propogation * (1 - hiddenNodes[i]) * self.trainInput[i][h]
+
+    def testNN(self):
+        
+
+        for x in range(9999):
+            activationFunction = 0
+            hiddenNodes = []
+            output = []
+            self.correct = 0
+            self.incorrect = 0
+
+            for counter in range(self.HIDDENODE_NUM):
+                for i in range(np.size(self.testInput[x])):
+                    activationFunction += self.testinInput[x][i] * self.layerOneWeights[i][counter]
+                hiddenNodes.append(self.sigmoidFunction(activationFunction) + self.biasWeights[0]*1)
+                activationFunction = 0
+        
+            for counter in range(self.OUTPUTNODE_NUM):
+                for i in range(np.size(hiddenNodes)):
+                    activationFunction += hiddenNodes[i] * self.layerTwoWeights[i][counter]
+                output.append(self.sigmoidFunction(activationFunction) + self.biasWeights[1]*1)
+                activationFunction = 0
+            
+            if(output.index(max(output)) == self.trainOutput[x]):
+                self.correct += 1
+            else:
+                self.incorrect += 1
+        
+        print("Total correctness : ", self.correct)
+        print("Total incorrectness : ", self.incorrect)
