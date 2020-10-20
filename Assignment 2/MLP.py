@@ -25,6 +25,7 @@ class MLP(object):
         x_test, y_test = mnist.load_testing()    #10000 samples
 
         self.trainInput = np.asarray(x_train).astype(np.float32)
+        self.trainInput = self.trainInput / np.linalg.norm(self.trainInput)
         self.trainOutput = np.asarray(y_train).astype(np.int32)
         self.testInput = np.asarray(x_test).astype(np.float32)
         self.testOutput = np.asarray(y_test).astype(np.int32)
@@ -37,39 +38,44 @@ class MLP(object):
 
     def sigmoidFunction(self, value):
         return 1/(1 + math.exp(-value))
-    
-    def normalizeData(self, value):
+        
+    def normalizeData1(self, value):
         return ((value-max(value)) / (max(value)-min(value)) - 0.5 ) *2
     
+    def normalizeData2(self, value):
+        return value / np.sqrt(np.sum(value**2))
+    
     def trainNN(self):
-
-        for x in range(50):
+        for x in range(5):
             error = []
             output = []
             hiddenNodes = []
             activationFunction = 0
             q = []
 
-            self.trainInput[x] =  self.trainInput[x] / np.sqrt(np.sum(self.trainInput[x]**2))
+            #self.trainInput[x] =  self.trainInput[x] / np.sqrt(np.sum(self.trainInput[x]**2))
+            #self.trainInput[x] = self.normalizeData2(self.trainInput[x])
             #print(self.trainInput[x])
             a = self.layerOneWeights * self.trainInput[x].reshape((self.INPUTNODE_NUM,1))
 
-            hiddenNodes = [sum(column)-4 for column in zip(*a)]
-            #hiddenNodes = [self.normalizeData(element) for element in hiddenNodes]
-
+            
+            hiddenNodes = [sum(column) for column in zip(*a)]
             print('Hidden node 1 is : ', hiddenNodes)
             hiddenNodes = [self.sigmoidFunction(element + self.biasWeights[0]*1) for element in hiddenNodes]
+            for element in hiddenNodes:
+                q.append(self.sigmoidFunction(element + self.biasWeights[0]*1))
             print('Hidden node 2 is : ', hiddenNodes)
+            print('Q is ', q)
             hiddenNodes = np.array(hiddenNodes)
-            print('Hidden node 3 is : ', hiddenNodes)
             
             a = self.layerTwoWeights * hiddenNodes.reshape(self.HIDDENODE_NUM,1)
             output = [sum(column) for column in zip(*a)]
-            #print('Output : ', output)
             output = [self.sigmoidFunction(element + self.biasWeights[1]*1) for element in output]
+            print('Output : ', output)
 
-            print('Actual Output : ', output.index(max(output)))
-            print('Desired Output : ',self.trainOutput[x])
+
+            #print('Actual Output : ', output.index(max(output)))
+            #print('Desired Output : ',self.trainOutput[x])
             
             if(output.index(max(output)) != self.trainOutput[x]):
                 for i in range(self.OUTPUTNODE_NUM):
