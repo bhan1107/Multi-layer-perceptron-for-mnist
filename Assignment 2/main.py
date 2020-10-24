@@ -1,5 +1,6 @@
 from MLP import MLP
 from AMLP import AMLP
+from MLPP import MLPP
 
 
 if __name__ == "__main__":
@@ -9,7 +10,7 @@ if __name__ == "__main__":
     mlp.trainNN()
     mlp.testNN()'''
 
-    mlp = AMLP(10,1,3)
+    mlp = MLPP(0.1,1,3)
     mlp.takeData()
     mlp.createWeights()
     mlp.BP()

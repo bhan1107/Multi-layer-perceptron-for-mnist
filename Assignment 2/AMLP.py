@@ -26,114 +26,81 @@ class AMLP(object):
         x_test, y_test = mnist.load_testing()    #10000 samples
 
         self.trainInput = np.asarray(x_train).astype(np.float32)
-        self.trainInput = self.trainInput / np.linalg.norm(self.trainInput) # Normalize MNIST data for sigmoid function
+        #self.trainInput = self.trainInput / np.linalg.norm(self.trainInput) # Normalize MNIST data for sigmoid function
+        self.trainInput = self.trainInput / 256
         self.testInput = np.asarray(x_test).astype(np.float32)
-        self.testInput = self.testInput / np.linalg.norm(self.testInput)
+        #self.testInput = self.testInput / np.linalg.norm(self.testInput)
+        self.testInput = self.testInput / 256
 
         self.trainOutput = np.asarray(y_train).astype(np.int32)
         self.testOutput = np.asarray(y_test).astype(np.int32)
     
     def createWeights(self):
-        self.layerOneWeights = np.random.rand(self.INPUTNODE_NUM,self.HIDDENODE_NUM)
-        self.layerTwoWeights = np.random.rand(self.HIDDENODE_NUM,self.OUTPUTNODE_NUM)
+        #self.layerOneWeights = np.random.rand(self.INPUTNODE_NUM,self.HIDDENODE_NUM)
+        #self.layerTwoWeights = np.random.rand(self.HIDDENODE_NUM,self.OUTPUTNODE_NUM)
+        self.inputToHiddenWeight = np.random.randn(self.INPUTNODE_NUM,self.HIDDENODE_NUM) / np.sqrt(self.INPUTNODE_NUM/2)
+        self.hiddenToOutputWeight = np.random.randn(self.HIDDENODE_NUM,self.HIDDENODE_NUM) / np.sqrt(self.HIDDENODE_NUM/2)
         self.biasWeights = np.random.rand(2,1)
 
     def sigmoidFunction(self, value):
-        #return 1/(1 + np.exp(-value))
         return 1.0 / (1.0 + np.exp(-value))
-
-    def normalizeData1(self, value):
-        return ((value-max(value)) / (max(value)-min(value)) - 0.5 ) *2
     
     def transfer_derivative(self, output):
 	    return output * (1.0 - output)
     
-    def trainNN(self):
-        for x in range(10):
-            output = []
-
-            dataWeightProduct = self.layerOneWeights * self.trainInput[x].reshape(self.INPUTNODE_NUM, 1)
-            hiddenNodes = [sum(column) for column in zip(*dataWeightProduct)]
-            hiddenNodes = np.asarray([self.sigmoidFunction(node + self.biasWeights[0]*self.biasValue) for node in hiddenNodes])
-
-            tempArray = hiddenNodes * self.layerTwoWeights
-            output = [sum(column)-2 for column in zip(*tempArray)]
-            output = [np.asscalar(self.sigmoidFunction(node + self.biasWeights[1]*self.biasValue)) for node in output]
-
-            self.adjustWeights(output, hiddenNodes, self.trainOutput[x], self.trainInput[x])
-        #print(output)
-
-
-    
-    def adjustWeights(self, output, hiddenNodes, outputVal, input):
-        error = np.zeros(10)
-        error[outputVal] = 1.0 # Represents 
-        #error = error - output * self.transfer_derivative(output)
-        error = 0
-        propogation = 0
-
-        for h in range(len(hiddenNodes)):
-            for j in range(len(output)):
-                weightChange = pow(error[j] - output[j])
-                #weightChange = error[j] * output[j] * (1 - output[j]) * hiddenNodes[h]
-                self.layerTwoWeights[h][j] += self.learningRate * weightChange
-                propogation += weightChange
-                #print(weightChange)
-            for i in range(len(input)):
-                self.layerOneWeights[i][h] += self.learningRate *  propogation * hiddenNodes[h] * (1 - hiddenNodes[h]) * input[i]
-            #print('The propogation is : ', propogation)
-            propogation = 0
-
-        #print(error)
-
     def BP(self):
         for x in range(100):
-            hiddenLayer = np.asarray(self.layerOneWeights * self.trainInput[x].reshape(self.INPUTNODE_NUM,1))
-            hiddenLayer = np.asarray([self.sigmoidFunction(sum(column)) for column in hiddenLayer.T])
-            #print(hiddenLayer)
+            #hiddenLayer = np.asarray(self.layerOneWeights * self.trainInput[x].reshape(self.INPUTNODE_NUM,1))
+            hiddenLayer = self.trainInput[x].dot(self.layerOneWeights)
+            hiddenLayer = np.asarray([self.sigmoidFunction(np.sum(column)) for column in hiddenLayer.T])
 
-            output = np.asarray(self.layerTwoWeights * hiddenLayer.reshape(40,1))
-            output = [self.sigmoidFunction(sum(column)) for column in output.T]
-            print(output)
+            #output = np.asarray(self.layerTwoWeights * hiddenLayer.reshape(40,1))
+            output = hiddenLayer.dot(self.layerTwoWeights)
+            #print(output)
+            output = [self.sigmoidFunction(np.sum(column)) for column in output.T]
 
             target = np.zeros(10)
-            target[self.trainOutput[x]] = 1.0 # Represents 
+            target[self.trainOutput[x]] = 1.0 # Represents desired output array [0,1,0,0,0,0,0,...]
             Error = [ (a - b)*(a - b) for a,b in zip(target,output) ]
+            print('Actual output : ', sum(Error))
 
-            #### Adjust weight
+            #### Adjust weight ####
             for h in range(len(hiddenLayer)):
                 propogate = 0
                 for i in range(len(output)):
                     ErrorOverOutput = (-1) * (target[i] - output[i])
-                    OutputOverNet = output[i] * (1 - output[i])
-                    total = ErrorOverOutput * OutputOverNet * self.layerTwoWeights[h][i]
-                    self.layerTwoWeights[h][i] -= self.learningRate * total
+                    OutputOverNet = self.sigmoidFunction(output[i]) * (1 - self.sigmoidFunction(output[i]))
+                    total = ErrorOverOutput * OutputOverNet * hiddenLayer[h]
+                    self.layerTwoWeights[h][i] = self.layerTwoWeights[h][i] - (self.learningRate * total)
                     propogate += total
                 for j in range(len(self.trainInput[x])):
-                    self.layerOneWeights[j][h] -= self.learningRate * propogate * ( hiddenLayer[h] * (1 - hiddenLayer[h]) ) * self.trainInput[x][j]
-            print(x)
+                    self.layerOneWeights[j][h] = self.layerOneWeights[j][h] + (self.learningRate * propogate * ( hiddenLayer[h] * (1 - hiddenLayer[h]) ) * self.trainInput[x][j])
+            #print(x)
+        #self.testNN()
 
     
     def testNN(self):
         correct = 0
         incorrect = 0
-        for x in range(300):
-            hiddenLayer = np.asarray(self.layerOneWeights * self.testInput[x].reshape(self.INPUTNODE_NUM,1))
-            hiddenLayer = np.asarray([self.sigmoidFunction(sum(column)) for column in hiddenLayer.T])
+        for x in range(3):
+            #hidden = np.asarray(self.layerOneWeights * self.testInput[x].reshape(self.INPUTNODE_NUM,1))
+            hidden = self.testInput[x].dot(self.layerOneWeights)
+            #hidden = np.asarray([self.sigmoidFunction(np.sum(column)) for column in hidden.T])
 
-            output = np.asarray(self.layerTwoWeights * hiddenLayer.reshape(40,1))
-            output = [self.sigmoidFunction(sum(column)) for column in output.T]
+            #output = np.asarray(self.layerTwoWeights * hidden.reshape(40,1))
+            output = hidden.dot(self.layerTwoWeights)
+            #output = [self.sigmoidFunction(np.sum(column)) for column in output.T]
+            print(output)
+            #print(type(output))
 
-            target = output.index(max(output))
-            print('Target : ', target)
-            print('Actual Output : ',self.testOutput[x])
+            target = np.argmax(output)
+            print('Actual Output : ', target)
+            #print('Desired Output : ',self.testOutput[x])
 
-            if(target == self.testOutput[x]):
-                correct += 1
-            else:
-                incorrect +=1
+            #if(target == self.testOutput[x]):
+            #    correct += 1
+            #else:
+            #    incorrect +=1
         
         print('Total correct : ', correct)
         print('Total incorrect : ', incorrect)
-
-
